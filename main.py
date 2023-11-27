@@ -3,6 +3,7 @@ import random
 import os
 import time
 from openai import OpenAI
+import tkinter as tk
 
 
 ## HELPERS
@@ -398,7 +399,61 @@ def print_clues(crossword_clues):
     for num, (word, clue) in crossword_clues["Down"].items():
         print(f"  {num}. {clue} ({word})")
 
+def create_crossword_gui(grid, numbered_words, crossword_clues):
+    root = tk.Tk()
+    root.title("Crossword Puzzle")
 
+    # Create frame for grid
+    grid_frame = tk.Frame(root)
+    grid_frame.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Draw grid
+    for r, row in enumerate(grid):
+        for c, cell in enumerate(row):
+            frame = tk.Frame(grid_frame, width=40, height=40, borderwidth=1, relief="solid", bg='white')
+            frame.grid_propagate(False)  # Prevents the frame from resizing
+            frame.grid(row=r, column=c, sticky="nsew")
+            if cell == '#':
+                frame.config(bg='black')
+            else:
+                number_across = next((number for number, (row, col, word) in numbered_words["Across"].items() if row == r + 1 and col == c + 1), None)
+                number_down = next((number for number, (row, col, word) in numbered_words["Down"].items() if row == r + 1 and col == c + 1), None)
+                number = number_across or number_down
+                if number:
+                    number_lbl = tk.Label(frame, text=str(number), bg='white', fg='black', font=('Arial', 10), anchor='nw')
+                    number_lbl.pack(side=tk.TOP, anchor='nw', padx=0, pady=0)
+
+    # Create frame for clues
+    clues_frame = tk.Frame(root)
+    clues_frame.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Create two columns for Across and Down
+    across_frame = tk.Frame(clues_frame)
+    across_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+    down_frame = tk.Frame(clues_frame)
+    down_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=10)
+
+    # Display Across clues
+    tk.Label(across_frame, text="Across", font=('Arial', 14)).pack(anchor='w')
+    for num, (word, clue) in crossword_clues["Across"].items():
+        tk.Label(across_frame, text=f"{num}. {clue}", wraplength=300, justify=tk.LEFT).pack(anchor='w')
+
+    # Display Down clues
+    tk.Label(down_frame, text="Down", font=('Arial', 14)).pack(anchor='w')
+    for num, (word, clue) in crossword_clues["Down"].items():
+        tk.Label(down_frame, text=f"{num}. {clue}", wraplength=300, justify=tk.LEFT).pack(anchor='w')
+
+    root.mainloop()
+
+def print_answers(numbered_words):
+    print("\n\nCrossword Answers:\n")
+    print("Across")
+    for num, (_, _, word) in sorted(numbered_words["Across"].items()):
+        print(f"  {num}. {word}")
+
+    print("\nDown")
+    for num, (_, _, word) in sorted(numbered_words["Down"].items()):
+        print(f"  {num}. {word}")
 
 if __name__ == '__main__':
     dict_file_path = 'monday_11_20_23.dict'
@@ -412,11 +467,15 @@ if __name__ == '__main__':
     print()
     st = time.time()
     crossword_clues = create_clues(final_wordlist)
-    print_clues(crossword_clues)
-
     et = time.time()
     elapsed_time = et - st
-    print('Execution time:', elapsed_time, 'seconds')
+    print('Clue generation time:', elapsed_time, 'seconds')
+
+    create_crossword_gui(final_grid, final_wordlist, crossword_clues)
+
+    print_answers(final_wordlist)
+
+    
 
 
     

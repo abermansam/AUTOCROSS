@@ -5,9 +5,7 @@ import time
 from openai import OpenAI
 
 
-
 ## HELPERS
-
 
 def clear_screen():
     """
@@ -359,14 +357,13 @@ def create_clues(word_list):
     system_prompt = """
     You are a crossword clue creator, skilled in crossword clues with a creative flair.
     Your clues make use of:
-    Double definitions (Wordplay hints where the clue is a second definition of the word. For example, the answer HOOD can have clues “gangster” or “a cover for the head")
-    Anagrams of the word ( giving a signal word such as “mixed,” “aimless” or “fractured.”)
-    Homophones (Clue may tell you that the answer has the same sound as another word or words, giving a signal such as “we hear,” “so it’s said” or “orally.”)
-    Pop culture references
+    Double definitions (The clue is a second definition of the word. For example, the answer HOOD can have one of the two clues: “gangster” or “a cover for the head")
+    Anagrams of the word (giving a signal word such as “mixed,” “aimless” or “fractured.” and then the anagram. The Anagram should also be a dictionary word)
+    References to Pop culture
     Simple definitions
     Riddles.
 
-    You will randomly select one of these 6 options and create a clue. Respond with only the text of this clue.
+    You will randomly select one of these 5 options and create a clue. The clue should be one phrase. Respond with only the text of this clue.
     """
 
     clues = {}

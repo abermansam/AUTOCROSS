@@ -253,6 +253,7 @@ def fill_grid_sam(grid, word_dict, complexity=25):
         return is_grid_filled(grid)
     else:
         return True
+    
 
 def remove_horizontal_word(grid, row, col):
     """
@@ -291,7 +292,9 @@ if __name__ == '__main__':
         word_dict = build_word_dictionary(dict_file_path)
         print_grid(crossword_grid)
         if fill_grid_sam(crossword_grid, word_dict, 35):
+            print()
             print("Grid successfully filled!")
+            print()
             print_grid(crossword_grid)
             break
         else:

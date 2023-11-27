@@ -2,6 +2,9 @@
 import random
 import os
 import time
+from openai import OpenAI
+
+
 
 ## HELPERS
 
@@ -198,62 +201,6 @@ def is_valid_intersection(grid, word, row, col, word_dict, complexity):
         return all(out_list)
     else:
         return True   
-    
-def fill_grid_sam(grid, word_dict, complexity=25):
-    """
-    Fills the crossword grid with words from the dictionary, starting from the top left.
-    """
-    row = 0
-    col = 0
-
-    while row < len(grid):   
-        col = 0 
-        while col < len(grid[0]):
-            space_length = find_open_space_across(grid, row, col)
-            if (space_length > 0):
-                word_placed = False
-                word_list = word_dict.get(space_length, [])
-                # random.shuffle(word_list)
-                for word, points in word_list:
-                    assert(col + space_length-1 < len(grid[0]))
-                    if points > complexity and is_valid_intersection(grid, word, row, col, word_dict, complexity):
-                        place_word(grid, word, row, col)
-                        print_grid(grid)
-                        # word_list.remove((word, points))
-                        word_dict[len(word)] = [(w, p) for w, p in word_dict[len(word)] if w != word]
-                        # print(word_dict)
-                        word_placed = True
-                        break
-                if not word_placed:
-                    # Remove all words in the same column and go back to start
-                    lowest_row = len(grid)
-
-                    for j in range(col, col + space_length):  # Iterate over each column in the space_length
-                        length,_, down_count = get_vertical_word_info(grid, row, j)
-                        for i in range(row+down_count, -1, -1):  # Iterate over each row above the current one
-                            if grid[i][j] == '#':
-                                break
-                            elif grid[i][j] != '.':
-                                if i<lowest_row:
-                                    lowest_row = i
-                                removed_word = remove_horizontal_word(grid, i, j)
-                                if removed_word:
-                                    word_dict[len(removed_word)].append((removed_word, 50))  # Adjust the score as needed
-                                print_grid(grid)
-                    row = lowest_row
-                    col = 0   
-                else:
-                    col += space_length - 1
-            else:            
-                col += 1
-        row += 1
-    if not is_grid_filled(grid):
-        
-        print(word_dict)
-        return is_grid_filled(grid)
-    else:
-        return True
-    
 
 def remove_horizontal_word(grid, row, col):
     """
@@ -277,25 +224,196 @@ def remove_horizontal_word(grid, row, col):
         end_col += 1
     return removed_word
 
+def fill_grid_sam(grid, word_dict, complexity=25):
+    """
+    Fills the crossword grid with words from the dictionary, starting from the top left.
+    """
+    row = 0
+    col = 0
 
-def remove_word(grid, word, row, col):
+    while row < len(grid):   
+        col = 0 
+        while col < len(grid[0]):
+            space_length = find_open_space_across(grid, row, col)
+            if (space_length > 0):
+                word_placed = False
+                word_list = word_dict.get(space_length, [])
+                # random.shuffle(word_list)
+                for word, points in word_list:
+                    assert(col + space_length-1 < len(grid[0]))
+                    if points > complexity and is_valid_intersection(grid, word, row, col, word_dict, complexity):
+                        place_word(grid, word, row, col)
+                        # print_grid(grid)
+                        # word_list.remove((word, points))
+                        word_dict[len(word)] = [(w, p) for w, p in word_dict[len(word)] if w != word]
+                        # print(word_dict)
+                        word_placed = True
+                        break
+                if not word_placed:
+                    # Remove all words in the same column and go back to start
+                    lowest_row = len(grid)
+
+                    for j in range(col, col + space_length):  # Iterate over each column in the space_length
+                        length,_, down_count = get_vertical_word_info(grid, row, j)
+                        for i in range(row+down_count, -1, -1):  # Iterate over each row above the current one
+                            if grid[i][j] == '#':
+                                break
+                            elif grid[i][j] != '.':
+                                if i<lowest_row:
+                                    lowest_row = i
+                                removed_word = remove_horizontal_word(grid, i, j)
+                                if removed_word:
+                                    word_dict[len(removed_word)].append((removed_word, 50))  # Adjust the score as needed
+                                # print_grid(grid)
+                    row = lowest_row
+                    col = 0   
+                else:
+                    col += space_length - 1
+            else:            
+                col += 1
+        row += 1
+    if not is_grid_filled(grid):
+        print(word_dict)
+        print("NOT FILLED")
+        return grid
+    else:
+        return grid
+
+def output_wordlist(grid):
+    across_words = []
+    down_words = []
+
+    # Find Across words
+    for row in range(len(grid)):
+        col = 0
+        while col < len(grid[0]):
+            if grid[row][col] != '#' and (col == 0 or grid[row][col - 1] == '#'):
+                start_col = col
+                word = ''
+                while col < len(grid[0]) and grid[row][col] != '#':
+                    word += grid[row][col]
+                    col += 1
+                if len(word) > 1:
+                    across_words.append((row + 1, start_col + 1, word))
+            else:
+                col += 1
+
+    # Find Down words
+    for col in range(len(grid[0])):
+        row = 0
+        while row < len(grid):
+            if grid[row][col] != '#' and (row == 0 or grid[row - 1][col] == '#'):
+                start_row = row
+                word = ''
+                while row < len(grid) and grid[row][col] != '#':
+                    word += grid[row][col]
+                    row += 1
+                if len(word) > 1:
+                    down_words.append((start_row + 1, col + 1, word))
+            else:
+                row += 1
+
+    return {"Across": across_words, "Down": down_words}
+
+def print_and_store_word_lists(grid):
+    word_list = output_wordlist(grid)
+    across_words = word_list["Across"]
+    down_words = word_list["Down"]
+    
+    all_words = sorted(across_words + down_words, key=lambda x: (x[0], x[1]))
+    word_number = 1
+    number_map = {}
+
+    # Dictionary to store the numbered words
+    numbered_words = {
+        "Across": {},
+        "Down": {}
+    }
+
+    # Assign numbers sequentially
+    for row, col, _ in all_words:
+        if (row, col) not in number_map:
+            number_map[(row, col)] = word_number
+            word_number += 1
+
+    # Print and store across words with numbers
+    # print("Across")
+    for row, col, word in across_words:
+        num = number_map[(row, col)]
+        # print(f"  {num}. {word}")
+        numbered_words["Across"][num] = (row, col, word)
+
+    # Sort, print, and store down words with numbers
+    # print("\nDown")
+    sorted_down_words = sorted(down_words, key=lambda x: (x[0], x[1]))
+    for row, col, word in sorted_down_words:
+        num = number_map[(row, col)]
+        # print(f"  {num}. {word}")
+        numbered_words["Down"][num] = (row, col, word)
+
+    return numbered_words
+
+def create_clues(word_list):
+    client = OpenAI()  # Replace with your actual API key
+
+    system_prompt = """
+    You are a crossword clue creator, skilled in crossword clues with a creative flair.
+    Occasionally use pop culture references or riddles in your clues. Respond with a text output of just the clue.
     """
-    Removes a word from the specified position on the grid.
-    """
-    for i in range(len(word)):
-        grid[row][col + i] = '.'
+
+    clues = {}
+
+    for category in ["Across", "Down"]:
+        clues[category] = {}
+        for num, (row, col, word) in word_list[category].items():
+            user_prompt = "Create a clue for the word " + word + ":"
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                max_tokens=60,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            clue = response.choices[0].message.content
+            clues[category][num] = (word, clue)
+
+    return clues
+
+def print_clues(crossword_clues):
+    print("Crossword Clues\n")
+
+    # Print Across clues
+    print("Across")
+    for num, (word, clue) in crossword_clues["Across"].items():
+        print(f"  {num}. {clue} ({word})")
+
+    print("\nDown")
+    # Print Down clues
+    for num, (word, clue) in crossword_clues["Down"].items():
+        print(f"  {num}. {clue} ({word})")
+
+
 
 if __name__ == '__main__':
     dict_file_path = 'monday_11_20_23.dict'
-    for attempt in range(1):
-        crossword_grid = create_symmetrical_grid2()
-        word_dict = build_word_dictionary(dict_file_path)
-        print_grid(crossword_grid)
-        if fill_grid_sam(crossword_grid, word_dict, 35):
-            print()
-            print("Grid successfully filled!")
-            print()
-            print_grid(crossword_grid)
-            break
-        else:
-            print("Attempt {} failed. Trying again...".format(attempt + 1))
+    crossword_grid = create_symmetrical_grid2()
+    word_dict = build_word_dictionary(dict_file_path)
+    print_grid(crossword_grid)
+    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_wordlist = print_and_store_word_lists(final_grid)
+    print()
+    print("Generating clues...")
+    print()
+    st = time.time()
+    crossword_clues = create_clues(final_wordlist)
+    print_clues(crossword_clues)
+
+    et = time.time()
+    elapsed_time = et - st
+    print('Execution time:', elapsed_time, 'seconds')
+
+
+    
+
+    

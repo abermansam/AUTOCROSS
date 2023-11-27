@@ -1,7 +1,16 @@
 # main.py
 import random
+import os
+import time
 
 ## HELPERS
+
+
+def clear_screen():
+    """
+    Clears the terminal screen.
+    """
+    print("\033[H\033[J", end="")
 
 def create_symmetrical_grid():
     """
@@ -16,7 +25,7 @@ def create_symmetrical_grid():
     black_squares = [(0, 3), (1, 3), (2, 3),
                      (0, 7), 
                      (0, 11), (1, 11), (2, 11),
-                     (3, 4), (3, 10),
+                     (3, 4),(3, 5), (3, 10),(3, 9),
                      (4, 0), (4, 1), (4, 2),
                      (4, 6), (4, 7), (4, 8),
                      (4, 12), (4, 13), (4, 14),
@@ -28,12 +37,40 @@ def create_symmetrical_grid():
 
     return grid
 
+def create_symmetrical_grid2():
+    """
+    Creates a 15x16 grid with 180-degree rotational symmetry.
+
+    :return: 2D list representing the grid
+    """
+    rows, cols = 15, 16  # Grid dimensions
+    grid = [['.' for _ in range(cols)] for _ in range(rows)]
+
+    # Add symmetric black squares
+    black_squares = [(0, 3), (0, 4),
+                     (1, 4), (2, 4),
+                     (3, 5), 
+                     (0, 11), (1, 11),
+                     (3, 9), (3, 10),
+                     (4, 14), (4, 15),
+                     (5, 0), (5, 1), (5, 2),
+                     (5, 7), (5, 8),
+                     (5, 12),
+                     (6, 6), (6, 11)]  # Example positions
+
+    for row, col in black_squares:
+        grid[row][col] = '#'
+        grid[rows - row - 1][cols - col - 1] = '#'  # Symmetric counterpart
+
+    return grid
+
 def print_grid(grid):
     """
     Prints the grid in a readable format.
 
     :param grid: 2D list representing the crossword grid
     """
+    # clear_screen()
     for row in grid:
         print(' '.join(row))
 
@@ -76,34 +113,6 @@ def build_word_dictionary(file_path):
 
 ## LOGIC BELOW
 
-
-def word_fits(grid, word, row, col):
-    """
-    Checks if the word can be placed at the specified position on the grid.
-
-    :param grid: 2D list representing the crossword grid.
-    :param word: String, the word to place.
-    :param row: Integer, the starting row for placing the word.
-    :param col: Integer, the starting column for placing the word.
-    :return: Boolean, True if the word can be placed, False otherwise.
-    """
-    grid_size = len(grid)
-    # Check if the word fits horizontally
-    if col + len(word) > grid_size:
-        return False
-
-    for i in range(len(word)):
-        current_char = grid[row][col + i]
-        if current_char not in ('.', word[i]):  # Check for invalid overlap
-            return False
-
-        # Check adjacent cells
-        if (col + i > 0 and grid[row][col + i - 1] != '.') or (col + i < grid_size - 1 and grid[row][col + i + 1] != '.'):
-            return False
-
-    return True
-
-
 def place_word(grid, word, row, col):
     """
     Places the word at the specified position on the grid.
@@ -117,13 +126,21 @@ def place_word(grid, word, row, col):
     for i in range(len(word)):
         grid[row][col + i] = word[i]
 
+def is_grid_filled(grid):
+    """
+    Checks if the grid is completely filled with words.
+
+    :param grid: 2D list representing the crossword grid.
+    :return: Boolean, True if the grid is filled, False otherwise.
+    """
+    return all(cell != '.' for row in grid for cell in row)
 
 def find_open_space_across(grid, row, col):
     """
     Finds the length of the open space starting from (row, col) in the specified orientation.
     """
     length = 0
-    while (col < len(grid) and grid[row][col] == '.'):
+    while (col < len(grid[0]) and row < len(grid) and grid[row][col] == '.'):
         length += 1
         col += 1
     return length
@@ -140,7 +157,7 @@ def get_vertical_word_info(grid, row, col):
     """
     length = 0
     letters = ''
-
+    down_count = 0
     # Move upwards to the start of the word
     start_row = row
     while start_row > 0 and grid[start_row - 1][col] != '#':
@@ -151,11 +168,14 @@ def get_vertical_word_info(grid, row, col):
     while current_row < len(grid) and grid[current_row][col] != '#':
         letters += grid[current_row][col] if grid[current_row][col] != '.' else ''
         length += 1
+        if (current_row>row):
+            down_count+=1
         current_row += 1
+        
 
-    return length, letters
+    return length, letters, down_count
 
-def is_valid_intersection(grid, word, row, col, word_dict):
+def is_valid_intersection(grid, word, row, col, word_dict, complexity):
     """
     Checks if placing the word creates valid intersections with perpendicular words.
     """
@@ -164,21 +184,22 @@ def is_valid_intersection(grid, word, row, col, word_dict):
     if row>0:
         while i < len(word):
             i += 1
-            space_length, letters = get_vertical_word_info(grid, row, col+i-1)
+            space_length, letters, _ = get_vertical_word_info(grid, row, col+i-1)
             letters = letters + word[i-1]
             word_list = word_dict.get(space_length, [])
-            for w, _ in word_list:
-                if w[:len(letters)] == letters:
-                    # print(w, letters, word)
-                    out_list[i-1] = True
-                    break
+            for w, points in word_list:
+                if points>complexity:
+                    if w[:len(letters)] == letters:
+                        # print(w, letters, word)
+                        out_list[i-1] = True
+                        break
+            if not out_list[i-1]:
+                return False
         return all(out_list)
     else:
-        return True
-
+        return True   
     
-    
-def fill_grid(grid, word_dict):
+def fill_grid_sam(grid, word_dict, complexity=25):
     """
     Fills the crossword grid with words from the dictionary, starting from the top left.
     """
@@ -190,34 +211,88 @@ def fill_grid(grid, word_dict):
         while col < len(grid[0]):
             space_length = find_open_space_across(grid, row, col)
             if (space_length > 0):
+                word_placed = False
                 word_list = word_dict.get(space_length, [])
-                random.shuffle(word_list)
+                # random.shuffle(word_list)
                 for word, points in word_list:
                     assert(col + space_length-1 < len(grid[0]))
-                    if points >25 and is_valid_intersection(grid, word, row, col, word_dict):
+                    if points > complexity and is_valid_intersection(grid, word, row, col, word_dict, complexity):
                         place_word(grid, word, row, col)
                         print_grid(grid)
-                        word_list.remove((word, points))
-                        break;
-                col += space_length - 1
-            col += 1
-        row += 1
-        
+                        # word_list.remove((word, points))
+                        word_dict[len(word)] = [(w, p) for w, p in word_dict[len(word)] if w != word]
+                        # print(word_dict)
+                        word_placed = True
+                        break
+                if not word_placed:
+                    # Remove all words in the same column and go back to start
+                    lowest_row = len(grid)
 
-def is_grid_filled(grid):
+                    for j in range(col, col + space_length):  # Iterate over each column in the space_length
+                        length,_, down_count = get_vertical_word_info(grid, row, j)
+                        for i in range(row+down_count, -1, -1):  # Iterate over each row above the current one
+                            if grid[i][j] == '#':
+                                break
+                            elif grid[i][j] != '.':
+                                if i<lowest_row:
+                                    lowest_row = i
+                                removed_word = remove_horizontal_word(grid, i, j)
+                                if removed_word:
+                                    word_dict[len(removed_word)].append((removed_word, 50))  # Adjust the score as needed
+                                print_grid(grid)
+                    row = lowest_row
+                    col = 0   
+                else:
+                    col += space_length - 1
+            else:            
+                col += 1
+        row += 1
+    if not is_grid_filled(grid):
+        
+        print(word_dict)
+        return is_grid_filled(grid)
+    else:
+        return True
+
+def remove_horizontal_word(grid, row, col):
     """
-    Checks if the grid is completely filled with words.
+    Removes a horizontal word from the grid starting from the given row and column.
 
     :param grid: 2D list representing the crossword grid.
-    :return: Boolean, True if the grid is filled, False otherwise.
+    :param row: Integer, the row of the word start.
+    :param col: Integer, the column of the word start.
     """
-    return all(cell != '.' for row in grid for cell in row)
+    # Move left to the start of the word
+    start_col = col
+    while start_col > 0 and grid[row][start_col - 1] != '#':
+        start_col -= 1
 
+    removed_word = ""
+    # Move right to the end of the word and clear letters
+    end_col = start_col
+    while end_col < len(grid[0]) and grid[row][end_col] != '#':
+        removed_word += grid[row][end_col]
+        grid[row][end_col] = '.'
+        end_col += 1
+    return removed_word
+
+
+def remove_word(grid, word, row, col):
+    """
+    Removes a word from the specified position on the grid.
+    """
+    for i in range(len(word)):
+        grid[row][col + i] = '.'
 
 if __name__ == '__main__':
-    crossword_grid = create_symmetrical_grid()
-    dict_file_path = 'spreadthewordlist_caps.dict'  # Replace with your actual file path
-    word_dict = build_word_dictionary(dict_file_path)
-    fill_grid(crossword_grid, word_dict)
-    print_grid(crossword_grid)
-    
+    dict_file_path = 'monday_11_20_23.dict'
+    for attempt in range(1):
+        crossword_grid = create_symmetrical_grid2()
+        word_dict = build_word_dictionary(dict_file_path)
+        print_grid(crossword_grid)
+        if fill_grid_sam(crossword_grid, word_dict, 35):
+            print("Grid successfully filled!")
+            print_grid(crossword_grid)
+            break
+        else:
+            print("Attempt {} failed. Trying again...".format(attempt + 1))

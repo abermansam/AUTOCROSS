@@ -4,6 +4,7 @@ import os
 import time
 from openai import OpenAI
 import tkinter as tk
+from tkinter import Canvas, Scrollbar
 
 
 ## HELPERS
@@ -39,16 +40,15 @@ def create_symmetrical_grid():
 
     return grid
 
-def create_symmetrical_grid2():
+def create_symmetrical_grid2(x,y):
     """
-    Creates a 15x16 grid with 180-degree rotational symmetry.
+    Creates a X by Y grid with 180-degree rotational symmetry.
 
     :return: 2D list representing the grid
     """
-    rows, cols = 15, 16  # Grid dimensions
+    rows, cols = x, y  # Grid dimensions
     grid = [['.' for _ in range(cols)] for _ in range(rows)]
 
-    # Add symmetric black squares
     black_squares = [(0, 3), (0, 4),
                      (1, 4), (2, 4),
                      (3, 5), 
@@ -58,11 +58,11 @@ def create_symmetrical_grid2():
                      (5, 0), (5, 1), (5, 2),
                      (5, 7), (5, 8),
                      (5, 12),
-                     (6, 6), (6, 11)]  # Example positions
+                     (6, 6), (6, 11)] 
 
     for row, col in black_squares:
         grid[row][col] = '#'
-        grid[rows - row - 1][cols - col - 1] = '#'  # Symmetric counterpart
+        grid[rows - row - 1][cols - col - 1] = '#' 
 
     return grid
 
@@ -237,7 +237,7 @@ def fill_grid_sam(grid, word_dict, complexity=25):
             if (space_length > 0):
                 word_placed = False
                 word_list = word_dict.get(space_length, [])
-                # random.shuffle(word_list)
+                random.shuffle(word_list)
                 for word, points in word_list:
                     assert(col + space_length-1 < len(grid[0]))
                     if points > complexity and is_valid_intersection(grid, word, row, col, word_dict, complexity):
@@ -358,7 +358,8 @@ def create_clues(word_list):
     system_prompt = """
     You are a crossword clue creator, skilled in crossword clues with a creative flair.
     Your clues make use of:
-    Double definitions (The clue is a second definition of the word. For example, the answer HOOD can have one of the two clues: “gangster” or “a cover for the head")
+    Double definitions (The clue is a second definition of the word.
+    For example, the answer HOOD can have one of the two clues: “gangster” or “a cover for the head")
     Anagrams of the word (giving a signal word such as “mixed,” “aimless” or “fractured.” and then the anagram. The Anagram should also be a dictionary word)
     References to Pop culture
     Simple definitions
@@ -445,6 +446,71 @@ def create_crossword_gui(grid, numbered_words, crossword_clues):
 
     root.mainloop()
 
+def create_crossword_gui2(grid, numbered_words, crossword_clues):
+    root = tk.Tk()
+    root.title("Crossword Puzzle")
+
+    # Create frame for grid
+    grid_frame = tk.Frame(root)
+    grid_frame.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Draw grid
+    for r, row in enumerate(grid):
+        for c, cell in enumerate(row):
+            frame = tk.Frame(grid_frame, width=40, height=40, borderwidth=1, relief="solid", bg='white')
+            frame.grid_propagate(False)  # Prevents the frame from resizing
+            frame.grid(row=r, column=c, sticky="nsew")
+            if cell == '#':
+                frame.config(bg='black')
+            else:
+                number_across = next((number for number, (row, col, word) in numbered_words["Across"].items() if row == r + 1 and col == c + 1), None)
+                number_down = next((number for number, (row, col, word) in numbered_words["Down"].items() if row == r + 1 and col == c + 1), None)
+                number = number_across or number_down
+                if number:
+                    number_lbl = tk.Label(frame, text=str(number), bg='white', fg='black', font=('Arial', 10), anchor='nw')
+                    number_lbl.pack(side=tk.TOP, anchor='nw', padx=0, pady=0)
+
+    # Create frame for clues
+    clues_frame = tk.Frame(root)
+    clues_frame.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Create canvas and scrollbar for clues
+    canvas = Canvas(clues_frame, width=400, height=600)
+    scrollbar = Scrollbar(clues_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = tk.Frame(canvas)
+
+    # Configure canvas and scrollbar
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )
+    )
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Pack canvas and scrollbar
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+
+    # Create two columns for Across and Down within the scrollable frame
+    across_frame = tk.Frame(scrollable_frame)
+    across_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+    down_frame = tk.Frame(scrollable_frame)
+    down_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=10)
+
+    # Display Across clues
+    tk.Label(across_frame, text="Across", font=('Arial', 14)).pack(anchor='w')
+    for num, (word, clue) in crossword_clues["Across"].items():
+        tk.Label(across_frame, text=f"{num}. {clue}", wraplength=300, justify=tk.LEFT).pack(anchor='w')
+
+    # Display Down clues
+    tk.Label(down_frame, text="Down", font=('Arial', 14)).pack(anchor='w')
+    for num, (word, clue) in crossword_clues["Down"].items():
+        tk.Label(down_frame, text=f"{num}. {clue}", wraplength=300, justify=tk.LEFT).pack(anchor='w')
+
+    root.mainloop()
+
 def print_answers(numbered_words):
     print("\n\nCrossword Answers:\n")
     print("Across")
@@ -457,7 +523,8 @@ def print_answers(numbered_words):
 
 if __name__ == '__main__':
     dict_file_path = 'monday_11_20_23.dict'
-    crossword_grid = create_symmetrical_grid2()
+    # dict_file_path = 'spreadthewordlist_caps.dict'
+    crossword_grid = create_symmetrical_grid2(15,16)
     word_dict = build_word_dictionary(dict_file_path)
     print_grid(crossword_grid)
     final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
@@ -465,13 +532,19 @@ if __name__ == '__main__':
     print()
     print("Generating clues...")
     print()
+    # crossword_clues = {}
+    # for category in ["Across", "Down"]:
+    #         crossword_clues[category] = {}
+    #         for num, (row, col, word) in final_wordlist[category].items():
+    #             clue = "Testing purposes"
+    #             crossword_clues[category][num] = (word, clue)
     st = time.time()
     crossword_clues = create_clues(final_wordlist)
     et = time.time()
     elapsed_time = et - st
     print('Clue generation time:', elapsed_time, 'seconds')
 
-    create_crossword_gui(final_grid, final_wordlist, crossword_clues)
+    create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
 
     print_answers(final_wordlist)
 

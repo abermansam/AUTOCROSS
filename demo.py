@@ -514,7 +514,7 @@ def print_answers(numbered_words):
         print(f"  {num}. {word}")
 
 def monday_demo(AImodel="gpt-3.5-turbo"):
-    dict_file_path = 'monday_11_20_23.dict'
+    dict_file_path = 'custom_wordlist.dict'
     demo1 = [(0, 3), (0, 4),
                 (1, 4), (2, 4),
                 (3, 5), 

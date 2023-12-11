@@ -40,7 +40,7 @@ def create_symmetrical_grid():
 
     return grid
 
-def create_symmetrical_grid2(x,y):
+def create_symmetrical_grid2(x,y, black_squares):
     """
     Creates a X by Y grid with 180-degree rotational symmetry.
 
@@ -49,16 +49,7 @@ def create_symmetrical_grid2(x,y):
     rows, cols = x, y  # Grid dimensions
     grid = [['.' for _ in range(cols)] for _ in range(rows)]
 
-    black_squares = [(0, 3), (0, 4),
-                     (1, 4), (2, 4),
-                     (3, 5), 
-                     (0, 11), (1, 11),
-                     (3, 9), (3, 10),
-                     (4, 14), (4, 15),
-                     (5, 0), (5, 1), (5, 2),
-                     (5, 7), (5, 8),
-                     (5, 12),
-                     (6, 6), (6, 11)] 
+    
 
     for row, col in black_squares:
         grid[row][col] = '#'
@@ -243,7 +234,6 @@ def fill_grid_sam(grid, word_dict, complexity=25):
                     if points > complexity and is_valid_intersection(grid, word, row, col, word_dict, complexity):
                         place_word(grid, word, row, col)
                         # print_grid(grid)
-                        # word_list.remove((word, points))
                         word_dict[len(word)] = [(w, p) for w, p in word_dict[len(word)] if w != word]
                         # print(word_dict)
                         word_placed = True
@@ -352,7 +342,7 @@ def print_and_store_word_lists(grid):
 
     return numbered_words
 
-def create_clues(word_list):
+def create_clues(word_list, AImodel="gpt-3.5-turbo"):
     client = OpenAI()  # Replace with your actual API key
 
     system_prompt = """
@@ -375,7 +365,7 @@ def create_clues(word_list):
         for num, (row, col, word) in word_list[category].items():
             user_prompt = "Create a clue for the word " + word + ":"
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model= AImodel,
                 max_tokens=60,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -460,6 +450,8 @@ def create_crossword_gui2(grid, numbered_words, crossword_clues):
             frame = tk.Frame(grid_frame, width=40, height=40, borderwidth=1, relief="solid", bg='white')
             frame.grid_propagate(False)  # Prevents the frame from resizing
             frame.grid(row=r, column=c, sticky="nsew")
+            grid_frame.grid_columnconfigure(c, minsize=40)
+            grid_frame.grid_rowconfigure(r, minsize=40)
             if cell == '#':
                 frame.config(bg='black')
             else:
@@ -475,7 +467,7 @@ def create_crossword_gui2(grid, numbered_words, crossword_clues):
     clues_frame.pack(side=tk.LEFT, padx=10, pady=10)
 
     # Create canvas and scrollbar for clues
-    canvas = Canvas(clues_frame, width=400, height=600)
+    canvas = Canvas(clues_frame, width=650, height=600)
     scrollbar = Scrollbar(clues_frame, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas)
 
@@ -521,10 +513,19 @@ def print_answers(numbered_words):
     for num, (_, _, word) in sorted(numbered_words["Down"].items()):
         print(f"  {num}. {word}")
 
-if __name__ == '__main__':
+def monday_demo(AImodel="gpt-3.5-turbo"):
     dict_file_path = 'monday_11_20_23.dict'
-    # dict_file_path = 'spreadthewordlist_caps.dict'
-    crossword_grid = create_symmetrical_grid2(15,16)
+    demo1 = [(0, 3), (0, 4),
+                (1, 4), (2, 4),
+                (3, 5), 
+                (0, 11), (1, 11),
+                (3, 9), (3, 10),
+                (4, 14), (4, 15),
+                (5, 0), (5, 1), (5, 2),
+                (5, 7), (5, 8),
+                (5, 12),
+                (6, 6), (6, 11)] 
+    crossword_grid = create_symmetrical_grid2(15,16, demo1)
     word_dict = build_word_dictionary(dict_file_path)
     print_grid(crossword_grid)
     final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
@@ -532,21 +533,165 @@ if __name__ == '__main__':
     print()
     print("Generating clues...")
     print()
-    # crossword_clues = {}
-    # for category in ["Across", "Down"]:
-    #         crossword_clues[category] = {}
-    #         for num, (row, col, word) in final_wordlist[category].items():
-    #             clue = "Testing purposes"
-    #             crossword_clues[category][num] = (word, clue)
+    st = time.time()
+    crossword_clues = create_clues(final_wordlist, AImodel)
+    et = time.time()
+    elapsed_time = et - st
+    print('Clue generation time:', elapsed_time, 'seconds')
+    create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
+    print_answers(final_wordlist)
+    return elapsed_time
+
+def wednesday_demo(AImodel="gpt-3.5-turbo"):
+    dict_file_path = 'wednesday_11_29_23.dict'
+    demo2 = [(0, 5), (0, 6), (0,10),
+                (1, 5), (1, 10),
+                (2, 10),
+                (3, 0), (3, 1), (3, 9), 
+                (4, 4),
+                (5, 5), (5, 6), (5, 7), (5, 8), (5, 12), (5, 13), (5, 14),
+                (6, 3), (6, 10)] 
+    crossword_grid = create_symmetrical_grid2(15,15, demo2)
+    word_dict = build_word_dictionary(dict_file_path)
+    print_grid(crossword_grid)
+    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_wordlist = print_and_store_word_lists(final_grid)
+    print()
+    print("Generating clues...")
+    print()
+    st = time.time()
+    crossword_clues = create_clues(final_wordlist, AImodel)
+    et = time.time()
+    elapsed_time = et - st
+    print('Clue generation time:', elapsed_time, 'seconds')
+    create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
+    print_answers(final_wordlist)
+    return elapsed_time
+
+def mini_demo():
+    demo3 = [(0, 3)]
+    dict_file_path = 'spreadthewordlist_caps.dict'
+    crossword_grid = create_symmetrical_grid2(5,7,demo3)
+    word_dict = build_word_dictionary(dict_file_path)
+    print_grid(crossword_grid)
+    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_wordlist = print_and_store_word_lists(final_grid)
+    print()
+    print("Generating clues...")
+    print()
     st = time.time()
     crossword_clues = create_clues(final_wordlist)
     et = time.time()
     elapsed_time = et - st
     print('Clue generation time:', elapsed_time, 'seconds')
-
     create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
-
     print_answers(final_wordlist)
+    return elapsed_time
+
+def mini_demo2():
+    demo3 = []
+    dict_file_path = 'spreadthewordlist_caps.dict'
+    crossword_grid = create_symmetrical_grid2(4,4,demo3)
+    word_dict = build_word_dictionary(dict_file_path)
+    print_grid(crossword_grid)
+    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_wordlist = print_and_store_word_lists(final_grid)
+    print()
+    print("Generating clues...")
+    print()
+    st = time.time()
+    crossword_clues = create_clues(final_wordlist)
+    et = time.time()
+    elapsed_time = et - st
+    print('Clue generation time:', elapsed_time, 'seconds')
+    create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
+    print_answers(final_wordlist)
+    return elapsed_time
+
+def mini_demo3():
+    demo3 = []
+    dict_file_path = 'spreadthewordlist_caps.dict'
+    crossword_grid = create_symmetrical_grid2(5,5,demo3)
+    word_dict = build_word_dictionary(dict_file_path)
+    print_grid(crossword_grid)
+    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_wordlist = print_and_store_word_lists(final_grid)
+    print()
+    print("Generating clues...")
+    print()
+    st = time.time()
+    crossword_clues = create_clues(final_wordlist)
+    et = time.time()
+    elapsed_time = et - st
+    print('Clue generation time:', elapsed_time, 'seconds')
+    create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
+    print_answers(final_wordlist)
+    return elapsed_time
+    
+def mini_demo2_gpt4():
+    demo3 = []
+    dict_file_path = 'spreadthewordlist_caps.dict'
+    crossword_grid = create_symmetrical_grid2(4,4,demo3)
+    word_dict = build_word_dictionary(dict_file_path)
+    print_grid(crossword_grid)
+    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_wordlist = print_and_store_word_lists(final_grid)
+    print()
+    print("Generating clues...")
+    print()
+    st = time.time()
+    crossword_clues = create_clues(final_wordlist, "gpt-4")
+    et = time.time()
+    elapsed_time = et - st
+    print('Clue generation time:', elapsed_time, 'seconds')
+    create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
+    print_answers(final_wordlist)
+    return elapsed_time
+
+
+
+if __name__ == '__main__':
+    # monday_demo()
+    # wednesday_demo()
+    
+    # t1 = mini_demo2()
+    # t2 = mini_demo2()
+    # t3 = mini_demo2()
+    # t4 = mini_demo2()
+    # t5 = mini_demo2()
+    # ag = (t1+t2+t3+t4+t5)/5.0/8.0
+    # print("Average clue generation time using GPT-3.5-Turbo: " + str(ag) )
+
+    # t1 = mini_demo2_gpt4()
+    # t2 = mini_demo2_gpt4()
+    # t3 = mini_demo2_gpt4()
+    # t4 = mini_demo2_gpt4()
+    # t5 = mini_demo2_gpt4()
+    # ag = (t1+t2+t3+t4+t5)/5.0/8.0
+    # print("Average clue generation time using GPT-4: " + str(ag) )
+
+    # mini_demo3()
+
+    gpt35turbo = 0
+    gpt4 = 0
+    iterations = 2
+    # for i in range(iterations):
+    #     gpt35turbo += monday_demo()
+    
+    # monday_demo("gpt-4")
+    # wednesday_demo("gpt-4")
+    wednesday_demo()
+
+    # mini_demo()
+    # print("Average clue generation time using GPT-3.5-Turbo: " + str(gpt35turbo/iterations) )
+    # print("Average clue generation time using GPT-4: " + str(gpt4/iterations) )
+
+    # # crossword_clues = {}
+    # # for category in ["Across", "Down"]:
+    # #         crossword_clues[category] = {}
+    # #         for num, (row, col, word) in final_wordlist[category].items():
+    # #             clue = "Testing purposes"
+    # #             crossword_clues[category][num] = (word, clue)
 
     
 

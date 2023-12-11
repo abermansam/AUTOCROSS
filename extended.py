@@ -4,6 +4,7 @@ import os
 import time
 from openai import OpenAI
 import tkinter as tk
+from tkinter import Canvas, Scrollbar
 
 
 ## HELPERS
@@ -47,6 +48,7 @@ def create_symmetrical_grid2(x,y):
     grid = [['.' for _ in range(cols)] for _ in range(rows)]
 
     black_squares = [(0, 3)] 
+    # black_squares = [] 
 
     for row, col in black_squares:
         grid[row][col] = '#'
@@ -260,11 +262,11 @@ def fill_grid_sam(grid, word_dict, complexity=25):
                 col += 1
         row += 1
     if not is_grid_filled(grid):
-        print(word_dict)
+        # print(word_dict)
         print("NOT FILLED")
-        return grid
+        return grid, False
     else:
-        return grid
+        return grid, True
 
 def output_wordlist(grid):
     across_words = []
@@ -433,6 +435,73 @@ def create_crossword_gui(grid, numbered_words, crossword_clues):
 
     root.mainloop()
 
+def create_crossword_gui2(grid, numbered_words, crossword_clues):
+    root = tk.Tk()
+    root.title("Crossword Puzzle")
+
+    # Create frame for grid
+    grid_frame = tk.Frame(root)
+    grid_frame.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Draw grid
+    for r, row in enumerate(grid):
+        for c, cell in enumerate(row):
+            frame = tk.Frame(grid_frame, width=40, height=40, borderwidth=1, relief="solid", bg='white')
+            frame.grid_propagate(False)  # Prevents the frame from resizing
+            frame.grid(row=r, column=c, sticky="nsew")
+            grid_frame.grid_columnconfigure(c, minsize=40)
+            grid_frame.grid_rowconfigure(r, minsize=40)
+            if cell == '#':
+                frame.config(bg='black')
+            else:
+                number_across = next((number for number, (row, col, word) in numbered_words["Across"].items() if row == r + 1 and col == c + 1), None)
+                number_down = next((number for number, (row, col, word) in numbered_words["Down"].items() if row == r + 1 and col == c + 1), None)
+                number = number_across or number_down
+                if number:
+                    number_lbl = tk.Label(frame, text=str(number), bg='white', fg='black', font=('Arial', 10), anchor='nw')
+                    number_lbl.pack(side=tk.TOP, anchor='nw', padx=0, pady=0)
+
+    # Create frame for clues
+    clues_frame = tk.Frame(root)
+    clues_frame.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Create canvas and scrollbar for clues
+    canvas = Canvas(clues_frame, width=650, height=600)
+    scrollbar = Scrollbar(clues_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = tk.Frame(canvas)
+
+    # Configure canvas and scrollbar
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )
+    )
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Pack canvas and scrollbar
+    canvas.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
+
+    # Create two columns for Across and Down within the scrollable frame
+    across_frame = tk.Frame(scrollable_frame)
+    across_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+    down_frame = tk.Frame(scrollable_frame)
+    down_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=10)
+
+    # Display Across clues
+    tk.Label(across_frame, text="Across", font=('Arial', 14)).pack(anchor='w')
+    for num, (word, clue) in crossword_clues["Across"].items():
+        tk.Label(across_frame, text=f"{num}. {clue}", wraplength=300, justify=tk.LEFT).pack(anchor='w')
+
+    # Display Down clues
+    tk.Label(down_frame, text="Down", font=('Arial', 14)).pack(anchor='w')
+    for num, (word, clue) in crossword_clues["Down"].items():
+        tk.Label(down_frame, text=f"{num}. {clue}", wraplength=300, justify=tk.LEFT).pack(anchor='w')
+
+    root.mainloop()
+
 def print_answers(numbered_words):
     print("\n\nCrossword Answers:\n")
     print("Across")
@@ -445,30 +514,33 @@ def print_answers(numbered_words):
 
 if __name__ == '__main__':
     # dict_file_path = 'monday_11_20_23.dict'
+    demo3 = [(0, 3)]
     dict_file_path = 'spreadthewordlist_caps.dict'
-    crossword_grid = create_symmetrical_grid2(7,5)
+    crossword_grid = create_symmetrical_grid2(5,7)
+    # crossword_grid = create_symmetrical_grid2(3,3)
     word_dict = build_word_dictionary(dict_file_path)
     print_grid(crossword_grid)
-    final_grid = fill_grid_sam(crossword_grid, word_dict, 35)
+    final_grid, isFilled = fill_grid_sam(crossword_grid, word_dict, 35)
     final_wordlist = print_and_store_word_lists(final_grid)
     print()
     print("Generating clues...")
     print()
     crossword_clues = {}
-    for category in ["Across", "Down"]:
-            crossword_clues[category] = {}
-            for num, (row, col, word) in final_wordlist[category].items():
-                clue = "Testing purposes"
-                crossword_clues[category][num] = (word, clue)
-    # st = time.time()
-    # crossword_clues = create_clues(final_wordlist)
-    # et = time.time()
-    # elapsed_time = et - st
-    # print('Clue generation time:', elapsed_time, 'seconds')
+    # for category in ["Across", "Down"]:
+    #         crossword_clues[category] = {}
+    #         for num, (row, col, word) in final_wordlist[category].items():
+    #             clue = "Testing purposes"
+    #             crossword_clues[category][num] = (word, clue)
+    st = time.time()
+    if (isFilled):
+        crossword_clues = create_clues(final_wordlist)
+    et = time.time()
+    elapsed_time = et - st
+    print('Clue generation time:', elapsed_time, 'seconds')
+    if (isFilled):
+        create_crossword_gui2(final_grid, final_wordlist, crossword_clues)
 
-    create_crossword_gui(final_grid, final_wordlist, crossword_clues)
-
-    print_answers(final_wordlist)
+        print_answers(final_wordlist)
 
     
 

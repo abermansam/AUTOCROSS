@@ -653,46 +653,11 @@ def mini_demo2_gpt4():
 if __name__ == '__main__':
     # monday_demo()
     # wednesday_demo()
-    
-    # t1 = mini_demo2()
-    # t2 = mini_demo2()
-    # t3 = mini_demo2()
-    # t4 = mini_demo2()
-    # t5 = mini_demo2()
-    # ag = (t1+t2+t3+t4+t5)/5.0/8.0
-    # print("Average clue generation time using GPT-3.5-Turbo: " + str(ag) )
-
-    # t1 = mini_demo2_gpt4()
-    # t2 = mini_demo2_gpt4()
-    # t3 = mini_demo2_gpt4()
-    # t4 = mini_demo2_gpt4()
-    # t5 = mini_demo2_gpt4()
-    # ag = (t1+t2+t3+t4+t5)/5.0/8.0
-    # print("Average clue generation time using GPT-4: " + str(ag) )
-
-    # mini_demo3()
-
-    gpt35turbo = 0
-    gpt4 = 0
-    iterations = 2
-    # for i in range(iterations):
-    #     gpt35turbo += monday_demo()
-    
     # monday_demo("gpt-4")
     # wednesday_demo("gpt-4")
-    # wednesday_demo()
-    mini_demo2()
-
+    # mini_demo2()
     # mini_demo()
-    # print("Average clue generation time using GPT-3.5-Turbo: " + str(gpt35turbo/iterations) )
-    # print("Average clue generation time using GPT-4: " + str(gpt4/iterations) )
-
-    # # crossword_clues = {}
-    # # for category in ["Across", "Down"]:
-    # #         crossword_clues[category] = {}
-    # #         for num, (row, col, word) in final_wordlist[category].items():
-    # #             clue = "Testing purposes"
-    # #             crossword_clues[category][num] = (word, clue)
+    # mini_demo2_gpt4()
 
     
 

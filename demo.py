@@ -543,7 +543,7 @@ def monday_demo(AImodel="gpt-3.5-turbo"):
     return elapsed_time
 
 def wednesday_demo(AImodel="gpt-3.5-turbo"):
-    dict_file_path = 'wednesday_11_29_23.dict'
+    dict_file_path = 'custom_wordlist.dict'
     demo2 = [(0, 5), (0, 6), (0,10),
                 (1, 5), (1, 10),
                 (2, 10),
@@ -680,7 +680,8 @@ if __name__ == '__main__':
     
     # monday_demo("gpt-4")
     # wednesday_demo("gpt-4")
-    wednesday_demo()
+    # wednesday_demo()
+    mini_demo2()
 
     # mini_demo()
     # print("Average clue generation time using GPT-3.5-Turbo: " + str(gpt35turbo/iterations) )
